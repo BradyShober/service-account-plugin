@@ -1,0 +1,51 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:f="/lib/form">
+    <l:layout title="Service Accounts">
+        <l:main-panel>
+            <h1>Service accounts</h1>
+            <p>Manage Jenkins machine identities and their API credentials.</p>
+
+            <j:if test="${not empty(it.creationError)}">
+                <div class="jenkins-alert jenkins-alert-danger" role="alert">${it.creationError}</div>
+            </j:if>
+
+            <j:if test="${it.canCreateAccounts}">
+                <h2>Create a service account</h2>
+                <f:form method="post" action="createAccount" class="jenkins-form-item">
+                    <input type="hidden" name="fromUi" value="true"/>
+                    <p class="jenkins-form-item"><label>Identifier <input class="jenkins-input" type="text" name="id" value="${it.creationId}" required="required" pattern="[a-z0-9][a-z0-9._-]{0,63}"/></label></p>
+                    <p class="jenkins-form-item"><label>Display name <input class="jenkins-input" type="text" name="displayName" value="${it.creationDisplayName}" required="required"/></label></p>
+                    <p class="jenkins-form-item"><label>Description <input class="jenkins-input" type="text" name="description" value="${it.creationDescription}"/></label></p>
+                    <div class="jenkins-form-item"><f:submit value="Create account"/></div>
+                </f:form>
+            </j:if>
+
+            <h2>Service accounts</h2>
+            <j:choose>
+                <j:when test="${empty(it.accounts)}">
+                    <p>No service accounts have been created.</p>
+                </j:when>
+                <j:otherwise>
+                    <table class="jenkins-table">
+                        <thead>
+                            <tr>
+                                <th>Account</th>
+                                <th>Principal</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <j:forEach var="account" items="${it.accounts}">
+                                <tr>
+                                    <td><a href="account?id=${account.id}">${account.displayName} (${account.id})</a></td>
+                                    <td><code>${account.principalName}</code></td>
+                                    <td>${account.enabled ? 'enabled' : 'disabled'}</td>
+                                </tr>
+                            </j:forEach>
+                        </tbody>
+                    </table>
+                </j:otherwise>
+            </j:choose>
+        </l:main-panel>
+    </l:layout>
+</j:jelly>

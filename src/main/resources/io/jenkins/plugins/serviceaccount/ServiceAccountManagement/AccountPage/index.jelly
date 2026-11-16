@@ -1,0 +1,93 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:f="/lib/form">
+    <l:layout title="${it.account.displayName}">
+        <l:main-panel>
+            <p><a href="./">Back to service accounts</a></p>
+            <h1>${it.account.displayName}</h1>
+            <p>Identifier: <code>${it.account.id}</code></p>
+            <p>Principal: <code>${it.account.principalName}</code></p>
+            <p>Status: ${it.account.enabled ? 'enabled' : 'disabled'}</p>
+            <p>Created: ${it.account.createdAtDisplay}</p>
+            <j:if test="${!empty(it.account.description)}">
+                <p>${it.account.description}</p>
+            </j:if>
+
+            <j:if test="${it.canManageAccounts}">
+                <j:if test="${it.account.enabled}">
+                    <f:form method="post" action="disableAccount" class="jenkins-form-item">
+                        <input type="hidden" name="accountId" value="${it.account.id}"/>
+                        <f:submit value="Disable account"/>
+                    </f:form>
+                </j:if>
+                <j:if test="${!it.account.enabled}">
+                    <f:form method="post" action="enableAccount" class="jenkins-form-item">
+                        <input type="hidden" name="accountId" value="${it.account.id}"/>
+                        <f:submit value="Enable account"/>
+                    </f:form>
+                </j:if>
+            </j:if>
+
+            <j:if test="${it.canDeleteAccounts}">
+                <f:form method="post" action="deleteAccount" class="jenkins-form-item">
+                    <input type="hidden" name="accountId" value="${it.account.id}"/>
+                    <f:submit value="Delete account" onclick="return confirm('Delete this account and invalidate all its credentials?')"/>
+                </f:form>
+            </j:if>
+
+            <h2>Credentials</h2>
+            <j:choose>
+                <j:when test="${empty(it.account.credentials)}">
+                    <p>This account does not have any credentials.</p>
+                </j:when>
+                <j:otherwise>
+                    <table class="jenkins-table">
+                        <thead>
+                            <tr>
+                                <th>Label</th>
+                                <th>Username</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Expires</th>
+                                <th>Last used</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <j:forEach var="credential" items="${it.account.credentials}">
+                                <tr>
+                                    <td>${credential.label}</td>
+                                    <td><code>${credential.username}</code></td>
+                                    <td>${credential.status}</td>
+                                    <td>${credential.createdAtDisplay}</td>
+                                    <td>${credential.expiresAtDisplay}</td>
+                                    <td>${credential.lastUsedAtDisplay}</td>
+                                    <td>
+                                        <j:if test="${it.canManageCredentials and credential.status != 'revoked'}">
+                                            <f:form method="post" action="revokeCredential" class="jenkins-form-item">
+                                                <input type="hidden" name="accountId" value="${it.account.id}"/>
+                                                <input type="hidden" name="credentialId" value="${credential.id}"/>
+                                                <f:submit value="Revoke"/>
+                                            </f:form>
+                                        </j:if>
+                                    </td>
+                                </tr>
+                            </j:forEach>
+                        </tbody>
+                    </table>
+                </j:otherwise>
+            </j:choose>
+
+            <j:if test="${it.canManageCredentials and it.account.enabled}">
+                <h2>Create a credential</h2>
+                <p>Credentials can overlap during rotation. The secret is displayed once after creation.</p>
+                <f:form method="post" action="createCredential" class="jenkins-form-item">
+                    <input type="hidden" name="accountId" value="${it.account.id}"/>
+                    <p class="jenkins-form-item"><label>Credential label <input class="jenkins-input" type="text" name="label" required="required"/></label></p>
+                    <p class="jenkins-form-item"><label>Description <input class="jenkins-input" type="text" name="description"/></label></p>
+                    <p class="jenkins-form-item"><label>Lifetime in days <input class="jenkins-input" type="number" name="lifetimeDays" value="${it.defaultCredentialLifetimeDays}" min="1"/></label></p>
+                    <div class="jenkins-form-item"><f:submit value="Create credential"/></div>
+                </f:form>
+            </j:if>
+        </l:main-panel>
+    </l:layout>
+</j:jelly>
