@@ -1,0 +1,4 @@
+<?jelly escape-by-default='true'?>
+<div>
+    Jenkins-managed service accounts with independently rotatable API credentials.
+</div>

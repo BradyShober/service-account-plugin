@@ -15,7 +15,6 @@
   <packaging>hpi</packaging>
 
   <name>Service Accounts</name>
-  <description>Jenkins-managed machine identities with independently rotatable credentials.</description>
   <url>https://github.com/jenkinsci/service-account-plugin</url>
 
   <properties>
