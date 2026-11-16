@@ -16,6 +16,9 @@ import hudson.security.GlobalMatrixAuthorizationStrategy;
 import hudson.security.HudsonPrivateSecurityRealm;
 import io.jenkins.plugins.casc.ConfigurationAsCode;
 import java.nio.file.Files;
+import java.util.logging.Handler;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 import jenkins.model.Jenkins;
 import org.htmlunit.html.HtmlElement;
 import org.htmlunit.html.HtmlForm;
@@ -100,8 +103,31 @@ class ServiceAccountAuthorizationTest {
                         .size()
                 >= 3);
         createCredentialForm.getInputByName("label").setValueAttribute("browser-token");
-        HtmlPage credentialCreatedPage =
-                (HtmlPage) ((HtmlElement) createCredentialForm.getFirstByXPath(".//button")).click();
+        StringBuilder storeLog = new StringBuilder();
+        Logger storeLogger = Logger.getLogger(ServiceAccountStore.class.getName());
+        Handler secretCapture = new Handler() {
+            @Override
+            public void publish(LogRecord record) {
+                storeLog.append(record.getMessage());
+                if (record.getThrown() != null) {
+                    storeLog.append(record.getThrown());
+                }
+            }
+
+            @Override
+            public void flush() {}
+
+            @Override
+            public void close() {}
+        };
+        storeLogger.addHandler(secretCapture);
+        HtmlPage credentialCreatedPage;
+        try {
+            credentialCreatedPage =
+                    (HtmlPage) ((HtmlElement) createCredentialForm.getFirstByXPath(".//button")).click();
+        } finally {
+            storeLogger.removeHandler(secretCapture);
+        }
         assertEquals("text/html", credentialCreatedPage.getWebResponse().getContentType());
         assertTrue(credentialCreatedPage.asNormalizedText().contains("Copy and store this secret now"));
         assertTrue(
@@ -110,6 +136,8 @@ class ServiceAccountAuthorizationTest {
         var secretElement = credentialCreatedPage.getElementById("service-account-secret");
         assertNotNull(secretElement);
         assertFalse(secretElement.asNormalizedText().isBlank());
+        String createdSecret = secretElement.asNormalizedText();
+        assertFalse(storeLog.toString().contains(createdSecret));
         var returnLink = credentialCreatedPage.getAnchors().stream()
                 .filter(anchor -> anchor.getHrefAttribute().contains("account?id=browser-created"))
                 .findFirst()
@@ -127,7 +155,14 @@ class ServiceAccountAuthorizationTest {
         HtmlPage updatedAccountPage = returnLink.click();
         assertTrue(updatedAccountPage.asNormalizedText().contains("browser-token"));
         assertTrue(updatedAccountPage.asNormalizedText().contains("Never"));
+        assertFalse(updatedAccountPage.asNormalizedText().contains(createdSecret));
         assertFalse(updatedAccountPage.asNormalizedText().contains(Long.toString(credentialCreatedAt)));
+        ServiceAccountManagement management =
+                Jenkins.get().getExtensionList(ServiceAccountManagement.class).get(0);
+        assertFalse(management.doApi().toString().contains(createdSecret));
+        assertFalse(management.doAudit().toString().contains(createdSecret));
+        assertFalse(Files.readString(rule.jenkins.getRootDir().toPath().resolve("service-accounts.xml"))
+                .contains(createdSecret));
         HtmlForm revokeForm = updatedAccountPage.getFirstByXPath("//form[contains(@action, 'revokeCredential')]");
         HtmlPage revokedAccountPage = (HtmlPage) ((HtmlElement) revokeForm.getFirstByXPath(".//button")).click();
         assertTrue(revokedAccountPage.asNormalizedText().contains("revoked"));

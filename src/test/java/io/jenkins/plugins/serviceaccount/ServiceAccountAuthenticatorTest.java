@@ -12,7 +12,13 @@ import hudson.security.HudsonPrivateSecurityRealm;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import jenkins.model.Jenkins;
 import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
@@ -70,6 +76,23 @@ class ServiceAccountAuthenticatorTest {
 
         assertEquals(200, status);
         assertTrue(body.contains("service-account-"), body);
+    }
+
+    @Test
+    void serviceAccountCredentialsContinueWorkingAfterRealmChanges(JenkinsRule rule) throws Exception {
+        rule.jenkins.setSecurityRealm(new HudsonPrivateSecurityRealm(false));
+        rule.jenkins.setAuthorizationStrategy(AuthorizationStrategy.UNSECURED);
+        ServiceAccountStore store =
+                Jenkins.get().getExtensionList(ServiceAccountStore.class).get(0);
+        store.createAccount("realm-switch", "Realm switch", null, "admin");
+        ServiceAccountStore.CreatedCredential credential =
+                store.createCredential("realm-switch", "api", null, null, "admin");
+
+        assertEquals(200, whoAmIStatus(rule, credential));
+        rule.jenkins.setSecurityRealm(rule.createDummySecurityRealm());
+        assertEquals(200, whoAmIStatus(rule, credential));
+        rule.jenkins.setSecurityRealm(new HudsonPrivateSecurityRealm(false));
+        assertEquals(200, whoAmIStatus(rule, credential));
     }
 
     @Test
@@ -214,6 +237,64 @@ class ServiceAccountAuthenticatorTest {
                 () -> store.createCredential("policy", "non-expiring", null, 0, "admin"));
         assertThrows(
                 IllegalArgumentException.class, () -> store.createCredential("policy", "too-long", null, 366, "admin"));
+    }
+
+    @Test
+    void concurrentCredentialCreationPersistsUsableIndependentCredentials(JenkinsRule rule) throws Exception {
+        ServiceAccountStore store =
+                Jenkins.get().getExtensionList(ServiceAccountStore.class).get(0);
+        store.createAccount("concurrent", "Concurrent", null, "admin");
+
+        int credentialCount = 12;
+        ExecutorService executor = Executors.newFixedThreadPool(6);
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            List<Future<ServiceAccountStore.CreatedCredential>> futures = new ArrayList<>();
+            for (int i = 0; i < credentialCount; i++) {
+                int credentialNumber = i;
+                futures.add(executor.submit(() -> {
+                    start.await();
+                    return store.createCredential("concurrent", "credential-" + credentialNumber, null, null, "admin");
+                }));
+            }
+            start.countDown();
+            List<ServiceAccountStore.CreatedCredential> credentials = new ArrayList<>();
+            for (Future<ServiceAccountStore.CreatedCredential> future : futures) {
+                credentials.add(future.get());
+            }
+
+            assertEquals(
+                    credentialCount,
+                    credentials.stream()
+                            .map(ServiceAccountStore.CreatedCredential::id)
+                            .distinct()
+                            .count());
+            for (ServiceAccountStore.CreatedCredential credential : credentials) {
+                assertNotNull(store.authenticate(credential.username(), credential.secret()));
+            }
+            assertEquals(
+                    credentialCount,
+                    store.listAccounts().stream()
+                            .filter(account -> account.id().equals("concurrent"))
+                            .findFirst()
+                            .orElseThrow()
+                            .credentials()
+                            .size());
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    private static int whoAmIStatus(JenkinsRule rule, ServiceAccountStore.CreatedCredential credential)
+            throws Exception {
+        HttpURLConnection connection = (HttpURLConnection)
+                rule.getURL().toURI().resolve("whoAmI/api/json").toURL().openConnection();
+        String basic = credential.username() + ":" + credential.secret();
+        connection.setRequestProperty(
+                "Authorization", "Basic " + Base64.getEncoder().encodeToString(basic.getBytes(StandardCharsets.UTF_8)));
+        int status = connection.getResponseCode();
+        connection.disconnect();
+        return status;
     }
 
     private static ServiceAccountStore.AuthenticatedAccount authenticate(
