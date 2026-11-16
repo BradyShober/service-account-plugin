@@ -125,14 +125,23 @@ public class ServiceAccountStore {
         try {
             save();
         } catch (IOException e) {
-            added.forEach(account -> accounts.remove(account.id));
-            changed.forEach((account, metadata) -> {
-                account.displayName = metadata.displayName();
-                account.description = metadata.description();
-            });
-            auditEvents.subList(previousEventCount, auditEvents.size()).clear();
+            rollbackConfiguredAccounts(added, changed, previousEventCount);
             throw e;
         }
+    }
+
+    private synchronized void rollbackConfiguredAccounts(
+            List<AccountRecord> added, Map<AccountRecord, AccountMetadata> changed, int previousEventCount) {
+        for (AccountRecord account : added) {
+            accounts.remove(account.id);
+        }
+        for (Map.Entry<AccountRecord, AccountMetadata> entry : changed.entrySet()) {
+            AccountRecord account = entry.getKey();
+            AccountMetadata metadata = entry.getValue();
+            account.displayName = metadata.displayName();
+            account.description = metadata.description();
+        }
+        auditEvents.subList(previousEventCount, auditEvents.size()).clear();
     }
 
     synchronized CreatedCredential createCredential(
