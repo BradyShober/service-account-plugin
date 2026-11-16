@@ -1,4 +1,4 @@
-# Jenkins Service Accounts Plugin
+# Service Accounts
 
 This Jenkins plugin is being developed to provide independently managed machine identities and revocable credentials for automation. The intended initial model is API-only service accounts, with permissions granted through Jenkins' configured authorization strategy.
 
