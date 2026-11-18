@@ -2,7 +2,6 @@
 
 This Jenkins plugin is being developed to provide independently managed machine identities and revocable credentials for automation. The intended initial model is API-only service accounts, with permissions granted through Jenkins' configured authorization strategy.
 
-The implementation is in progress. Do not use this plugin for production authentication until the authentication and authorization integration tests and security review are complete.
 
 Service account management is available from **Manage Jenkins → Service Accounts** to users with the service-account view permission.
 The list page contains account creation and navigation; open an account to manage its credentials. Each account's API username is its authorization principal (`service-account-<id>`), shared by its independently revocable credentials; rotating credentials creates a new token secret without changing the username. New credential secrets are shown once on a separate confirmation page.
