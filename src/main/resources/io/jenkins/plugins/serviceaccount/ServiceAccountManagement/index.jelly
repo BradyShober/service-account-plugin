@@ -4,6 +4,7 @@
         <l:main-panel>
             <h1>Service accounts</h1>
             <p>Manage Jenkins machine identities and their API credentials.</p>
+            <p><a href="auditLog">View audit log</a></p>
 
             <j:if test="${not empty(it.creationError)}">
                 <div class="jenkins-alert jenkins-alert-danger" role="alert">${it.creationError}</div>

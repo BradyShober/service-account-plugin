@@ -385,10 +385,27 @@ public class ServiceAccountStore {
 
     synchronized List<AuditEvent> listAuditEvents() throws IOException {
         ensureLoaded();
+        if (hasExpiredAuditEvents(System.currentTimeMillis())) {
+            save();
+        }
         return auditEvents.stream()
                 .map(AuditEventRecord::toAuditEvent)
                 .sorted(Comparator.comparingLong(AuditEvent::timestamp).reversed())
                 .toList();
+    }
+
+    synchronized void pruneAuditEvents() throws IOException {
+        ensureLoaded();
+        if (hasExpiredAuditEvents(System.currentTimeMillis())) {
+            save();
+        }
+    }
+
+    synchronized void pruneAuditEvents(long now) throws IOException {
+        ensureLoaded();
+        if (hasExpiredAuditEvents(now)) {
+            save(now);
+        }
     }
 
     private AccountRecord requireActiveAccount(String id) {
@@ -494,13 +511,43 @@ public class ServiceAccountStore {
     }
 
     private void save() throws IOException {
+        save(System.currentTimeMillis());
+    }
+
+    private void save(long now) throws IOException {
         ensureLoaded();
         File path = new File(Jenkins.get().getRootDir(), STORE_FILENAME);
         XmlFile xml = new XmlFile(XSTREAM, path);
+        List<AuditEventRecord> previousAuditEvents = auditEvents;
+        auditEvents = new ArrayList<>(auditEvents);
+        pruneExpiredAuditEvents(now);
         StoreData data = new StoreData();
         data.accounts = accounts;
         data.auditEvents = auditEvents;
-        xml.write(data);
+        try {
+            xml.write(data);
+        } catch (IOException e) {
+            auditEvents = previousAuditEvents;
+            throw e;
+        }
+    }
+
+    private boolean hasExpiredAuditEvents(long now) {
+        int retentionDays = ServiceAccountConfiguration.get().getAuditRetentionDays();
+        if (retentionDays == 0) {
+            return false;
+        }
+        long cutoff = now - retentionDays * 86_400_000L;
+        return auditEvents.stream().anyMatch(event -> event.timestamp < cutoff);
+    }
+
+    private void pruneExpiredAuditEvents(long now) {
+        int retentionDays = ServiceAccountConfiguration.get().getAuditRetentionDays();
+        if (retentionDays == 0) {
+            return;
+        }
+        long cutoff = now - retentionDays * 86_400_000L;
+        auditEvents.removeIf(event -> event.timestamp < cutoff);
     }
 
     private static void validateId(String id) {

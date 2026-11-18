@@ -1,0 +1,42 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
+    <l:layout title="Service Account Audit Log">
+        <l:main-panel>
+            <p><a href="../">Back to service accounts</a></p>
+            <h1>Service account audit log</h1>
+            <j:choose>
+                <j:when test="${empty(it.events)}">
+                    <p>No audit events are available within the configured retention period.</p>
+                </j:when>
+                <j:otherwise>
+                    <table class="jenkins-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Event</th>
+                                <th>Account</th>
+                                <th>Principal</th>
+                                <th>Credential</th>
+                                <th>Credential ID</th>
+                                <th>Actor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <j:forEach var="event" items="${it.events}">
+                                <tr>
+                                    <td>${event.timestamp}</td>
+                                    <td>${event.type}</td>
+                                    <td>${event.accountId}</td>
+                                    <td><code>${event.principalName}</code></td>
+                                    <td>${event.credentialLabel}</td>
+                                    <td><code>${event.credentialId}</code></td>
+                                    <td>${event.actor}</td>
+                                </tr>
+                            </j:forEach>
+                        </tbody>
+                    </table>
+                </j:otherwise>
+            </j:choose>
+        </l:main-panel>
+    </l:layout>
+</j:jelly>

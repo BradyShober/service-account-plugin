@@ -82,6 +82,10 @@ public class ServiceAccountManagement extends ManagementLink {
         return ServiceAccountConfiguration.get().getDefaultCredentialLifetimeDays();
     }
 
+    public int getAuditRetentionDays() {
+        return ServiceAccountConfiguration.get().getAuditRetentionDays();
+    }
+
     @GET
     public HttpResponse doAccount(@QueryParameter String id) throws IOException {
         Jenkins.get().checkPermission(ServiceAccountPermissions.VIEW);
@@ -134,6 +138,12 @@ public class ServiceAccountManagement extends ManagementLink {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("events", events);
         return JSONObject.fromObject(response);
+    }
+
+    @GET
+    public HttpResponse doAuditLog() throws IOException {
+        Jenkins.get().checkPermission(ServiceAccountPermissions.VIEW);
+        return HttpResponses.forwardToView(new AuditLogPage(store().listAuditEvents()), "index");
     }
 
     @RequirePOST
@@ -407,6 +417,36 @@ public class ServiceAccountManagement extends ManagementLink {
 
         public String getSecret() {
             return secret;
+        }
+    }
+
+    public static class AuditLogPage {
+        private final List<Map<String, Object>> events;
+
+        AuditLogPage(List<ServiceAccountStore.AuditEvent> auditEvents) {
+            Locale locale = Stapler.getCurrentRequest2() == null
+                    ? Locale.getDefault()
+                    : Stapler.getCurrentRequest2().getLocale();
+            events = auditEvents.stream()
+                    .map(event -> {
+                        Map<String, Object> item = new LinkedHashMap<>();
+                        item.put("type", event.type());
+                        item.put("accountId", event.accountId());
+                        item.put("principalName", event.principalName());
+                        item.put("credentialId", event.credentialId());
+                        item.put("credentialLabel", event.credentialLabel());
+                        item.put("actor", event.actor());
+                        item.put(
+                                "timestamp",
+                                DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT, locale)
+                                        .format(new Date(event.timestamp())));
+                        return item;
+                    })
+                    .toList();
+        }
+
+        public List<Map<String, Object>> getEvents() {
+            return events;
         }
     }
 }

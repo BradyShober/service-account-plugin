@@ -4,7 +4,7 @@ This Jenkins plugin is being developed to provide independently managed machine 
 
 
 Service account management is available from **Manage Jenkins → Service Accounts** to users with the service-account view permission.
-The list page contains account creation and navigation; open an account to manage its credentials. Each account's API username is its authorization principal (`service-account-<id>`), shared by its independently revocable credentials; rotating credentials creates a new token secret without changing the username. New credential secrets are shown once on a separate confirmation page.
+The list page contains account creation, navigation, and an audit log; open an account to manage its credentials. The audit log shows account and credential lifecycle events, actor, and readable timestamp. Events are retained for 90 days by default; configure the period in the service-account configuration, or set it to `0` to keep events indefinitely. Each account's API username is its authorization principal (`service-account-<id>`), shared by its independently revocable credentials; rotating credentials creates a new token secret without changing the username. New credential secrets are shown once on a separate confirmation page.
 
 ## Configuration as Code
 
@@ -13,6 +13,7 @@ Declare account metadata under `unclassified.serviceAccountConfiguration.service
 ```yaml
 unclassified:
   serviceAccountConfiguration:
+    auditRetentionDays: 90
     serviceAccounts:
       - id: automation-deploy
         displayName: Deployment automation

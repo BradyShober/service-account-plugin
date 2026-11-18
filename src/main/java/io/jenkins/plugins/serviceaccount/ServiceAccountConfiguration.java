@@ -15,6 +15,7 @@ public class ServiceAccountConfiguration extends GlobalConfiguration {
 
     private int defaultCredentialLifetimeDays = 90;
     private int maximumCredentialLifetimeDays = 365;
+    private int auditRetentionDays = 90;
     private boolean allowNonExpiringCredentials;
     private transient List<ServiceAccountDefinition> serviceAccounts = List.of();
 
@@ -39,6 +40,24 @@ public class ServiceAccountConfiguration extends GlobalConfiguration {
 
     public int getMaximumCredentialLifetimeDays() {
         return maximumCredentialLifetimeDays;
+    }
+
+    public int getAuditRetentionDays() {
+        return auditRetentionDays;
+    }
+
+    @DataBoundSetter
+    public void setAuditRetentionDays(int days) {
+        if (days < 0 || days > 3650) {
+            throw new IllegalArgumentException("Audit retention must be between 0 and 3650 days");
+        }
+        auditRetentionDays = days;
+        saveConfiguration();
+        try {
+            ServiceAccountStore.get().pruneAuditEvents();
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to apply service-account audit retention", e);
+        }
     }
 
     @DataBoundSetter

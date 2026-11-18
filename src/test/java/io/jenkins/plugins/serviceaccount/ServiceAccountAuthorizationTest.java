@@ -176,6 +176,17 @@ class ServiceAccountAuthorizationTest {
         HtmlPage revokedAccountPage = (HtmlPage) ((HtmlElement) revokeForm.getFirstByXPath(".//button")).click();
         assertTrue(revokedAccountPage.asNormalizedText().contains("revoked"));
 
+        HtmlPage refreshedAccountsPage = webClient.goTo("manage/service-accounts/");
+        var auditLogLink = refreshedAccountsPage.getAnchors().stream()
+                .filter(anchor -> anchor.getHrefAttribute().contains("auditLog"))
+                .findFirst()
+                .orElseThrow();
+        HtmlPage auditLogPage = auditLogLink.click();
+        assertTrue(auditLogPage.getTitleText().startsWith("Service Account Audit Log"));
+        assertTrue(auditLogPage.asNormalizedText().contains("ACCOUNT_CREATED"));
+        assertTrue(auditLogPage.asNormalizedText().contains("CREDENTIAL_REVOKED"));
+        assertTrue(auditLogPage.asNormalizedText().contains("admin"));
+
         String pageText = accountsPage.asNormalizedText();
         assertEquals("text/html", accountsPage.getWebResponse().getContentType());
         assertTrue(accountsPage.getTitleText().startsWith("Service Accounts"), accountsPage.getTitleText());
@@ -193,6 +204,26 @@ class ServiceAccountAuthorizationTest {
                 >= 1);
         assertFalse(pageText.contains("<j:jelly"), pageText);
         webClient.close();
+    }
+
+    @Test
+    void auditRetentionExpiresEventsAndZeroKeepsThem(JenkinsRule rule) throws Exception {
+        ServiceAccountStore store =
+                Jenkins.get().getExtensionList(ServiceAccountStore.class).get(0);
+        ServiceAccountConfiguration configuration = ServiceAccountConfiguration.get();
+        store.createAccount("audit-retention", "Audit retention", null, "admin");
+        long eventTime = store.listAuditEvents().get(0).timestamp();
+
+        configuration.setAuditRetentionDays(1);
+        store.pruneAuditEvents(eventTime + 2 * 86_400_000L);
+        assertTrue(store.listAuditEvents().isEmpty());
+
+        store.createAccount("audit-infinite", "Audit forever", null, "admin");
+        long retainedEventTime = store.listAuditEvents().get(0).timestamp();
+        configuration.setAuditRetentionDays(0);
+        store.pruneAuditEvents(retainedEventTime + 2 * 86_400_000L);
+        assertTrue(store.listAuditEvents().stream()
+                .anyMatch(event -> event.accountId().equals("audit-infinite")));
     }
 
     @Test

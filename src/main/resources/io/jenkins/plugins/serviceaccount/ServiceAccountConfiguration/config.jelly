@@ -7,6 +7,10 @@
         <f:entry title="Maximum credential lifetime (days)" field="maximumCredentialLifetimeDays">
             <f:number />
         </f:entry>
+        <f:entry title="Audit retention (days)" field="auditRetentionDays">
+            <f:number min="0" />
+            <div class="jenkins-form-description">Set to 0 to keep audit events indefinitely.</div>
+        </f:entry>
         <f:entry title="Allow non-expiring credentials" field="allowNonExpiringCredentials">
             <f:checkbox />
         </f:entry>
