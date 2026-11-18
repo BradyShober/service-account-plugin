@@ -21,6 +21,7 @@ import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.Stapler;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 import org.kohsuke.stapler.json.JsonHttpResponse;
+import org.kohsuke.stapler.verb.GET;
 
 @Extension
 public class ServiceAccountManagement extends ManagementLink {
@@ -81,6 +82,7 @@ public class ServiceAccountManagement extends ManagementLink {
         return ServiceAccountConfiguration.get().getDefaultCredentialLifetimeDays();
     }
 
+    @GET
     public HttpResponse doAccount(@QueryParameter String id) throws IOException {
         Jenkins.get().checkPermission(ServiceAccountPermissions.VIEW);
         ServiceAccountStore.AccountSummary account = store().listAccounts().stream()
@@ -93,6 +95,7 @@ public class ServiceAccountManagement extends ManagementLink {
         return HttpResponses.forwardToView(new AccountPage(account), "index");
     }
 
+    @GET
     public JSONObject doApi() throws IOException {
         Jenkins.get().checkPermission(ServiceAccountPermissions.VIEW);
         Map<String, Object> response = new LinkedHashMap<>();
@@ -104,6 +107,7 @@ public class ServiceAccountManagement extends ManagementLink {
         return JSONObject.fromObject(response);
     }
 
+    @GET
     public JSONObject doAudit() throws IOException {
         Jenkins.get().checkPermission(ServiceAccountPermissions.VIEW);
         List<Map<String, Object>> events = new ArrayList<>();
@@ -160,7 +164,8 @@ public class ServiceAccountManagement extends ManagementLink {
             @QueryParameter String accountId,
             @QueryParameter String label,
             @QueryParameter String description,
-            @QueryParameter String lifetimeDays)
+            @QueryParameter String lifetimeDays,
+            @QueryParameter String fromUi)
             throws IOException {
         Jenkins.get().checkPermission(ServiceAccountPermissions.MANAGE_CREDENTIALS);
         Integer days;
@@ -172,8 +177,16 @@ public class ServiceAccountManagement extends ManagementLink {
         try {
             ServiceAccountStore.CreatedCredential credential =
                     store().createCredential(accountId, label, description, days, actor());
-            return HttpResponses.forwardToView(
-                    new CredentialCreatedPage(accountId, credential.username(), credential.secret()), "index");
+            if ("true".equals(fromUi)) {
+                return HttpResponses.forwardToView(
+                        new CredentialCreatedPage(accountId, credential.username(), credential.secret()), "index");
+            }
+            return jsonResponse(
+                    Map.of(
+                            "credentialId", credential.id(),
+                            "username", credential.username(),
+                            "secret", credential.secret()),
+                    201);
         } catch (IllegalArgumentException e) {
             return jsonError(400, e.getMessage());
         }

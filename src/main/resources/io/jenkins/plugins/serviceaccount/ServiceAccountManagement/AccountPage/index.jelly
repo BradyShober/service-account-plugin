@@ -82,6 +82,7 @@
                 <p>Credentials can overlap during rotation. The secret is displayed once after creation.</p>
                 <f:form method="post" action="createCredential" class="jenkins-form-item">
                     <input type="hidden" name="accountId" value="${it.account.id}"/>
+                    <input type="hidden" name="fromUi" value="true"/>
                     <p class="jenkins-form-item"><label>Credential label <input class="jenkins-input" type="text" name="label" required="required"/></label></p>
                     <p class="jenkins-form-item"><label>Description <input class="jenkins-input" type="text" name="description"/></label></p>
                     <p class="jenkins-form-item"><label>Lifetime in days <input class="jenkins-input" type="number" name="lifetimeDays" value="${it.defaultCredentialLifetimeDays}" min="1"/></label></p>
