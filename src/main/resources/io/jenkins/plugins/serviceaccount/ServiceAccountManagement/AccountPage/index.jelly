@@ -3,7 +3,7 @@
     <st:adjunct includes="io.jenkins.plugins.serviceaccount.ServiceAccountManagement.AccountPage"/>
     <l:layout title="${it.account.displayName}">
         <l:main-panel>
-            <p><a href="./">Back to service accounts</a></p>
+            <p><a href="../">Back to service accounts</a></p>
             <h1>${it.account.displayName}</h1>
             <p>Identifier: <code>${it.account.id}</code></p>
             <p>Principal: <code>${it.account.principalName}</code></p>
@@ -15,13 +15,15 @@
 
             <j:if test="${it.canManageAccounts}">
                 <j:if test="${it.account.enabled}">
-                    <f:form method="post" action="disableAccount" class="jenkins-form-item">
+                    <f:form method="post" action="../disableAccount" class="jenkins-form-item">
+                        <input type="hidden" name="${h.getCrumbRequestField()}" value="${h.getCrumb(request2)}"/>
                         <input type="hidden" name="accountId" value="${it.account.id}"/>
                         <f:submit value="Disable account"/>
                     </f:form>
                 </j:if>
                 <j:if test="${!it.account.enabled}">
-                    <f:form method="post" action="enableAccount" class="jenkins-form-item">
+                    <f:form method="post" action="../enableAccount" class="jenkins-form-item">
+                        <input type="hidden" name="${h.getCrumbRequestField()}" value="${h.getCrumb(request2)}"/>
                         <input type="hidden" name="accountId" value="${it.account.id}"/>
                         <f:submit value="Enable account"/>
                     </f:form>
@@ -29,7 +31,8 @@
             </j:if>
 
             <j:if test="${it.canDeleteAccounts}">
-                <f:form method="post" action="deleteAccount" class="jenkins-form-item service-account-delete-form" data-confirm="Delete this account and invalidate all its credentials?">
+                <f:form method="post" action="../deleteAccount" class="jenkins-form-item service-account-delete-form" data-confirm="Delete this account and invalidate all its credentials?">
+                    <input type="hidden" name="${h.getCrumbRequestField()}" value="${h.getCrumb(request2)}"/>
                     <input type="hidden" name="accountId" value="${it.account.id}"/>
                     <f:submit value="Delete account"/>
                 </f:form>
@@ -62,9 +65,10 @@
                                     <td>${credential.createdAtDisplay}</td>
                                     <td>${credential.expiresAtDisplay}</td>
                                     <td>${credential.lastUsedAtDisplay}</td>
-                                    <td>
+                                    <td class="service-account-credential-action">
                                         <j:if test="${it.canManageCredentials and credential.status != 'revoked'}">
-                                            <f:form method="post" action="revokeCredential" class="jenkins-form-item">
+                                            <f:form method="post" action="../revokeCredential" class="jenkins-form-item">
+                                                <input type="hidden" name="${h.getCrumbRequestField()}" value="${h.getCrumb(request2)}"/>
                                                 <input type="hidden" name="accountId" value="${it.account.id}"/>
                                                 <input type="hidden" name="credentialId" value="${credential.id}"/>
                                                 <f:submit value="Revoke"/>
@@ -81,7 +85,8 @@
             <j:if test="${it.canManageCredentials and it.account.enabled}">
                 <h2>Create a credential</h2>
                 <p>Credentials can overlap during rotation. The secret is displayed once after creation.</p>
-                <f:form method="post" action="createCredential" class="jenkins-form-item">
+                <f:form method="post" action="../createCredential" class="jenkins-form-item">
+                    <input type="hidden" name="${h.getCrumbRequestField()}" value="${h.getCrumb(request2)}"/>
                     <input type="hidden" name="accountId" value="${it.account.id}"/>
                     <input type="hidden" name="fromUi" value="true"/>
                     <p class="jenkins-form-item"><label>Credential label <input class="jenkins-input" type="text" name="label" required="required"/></label></p>

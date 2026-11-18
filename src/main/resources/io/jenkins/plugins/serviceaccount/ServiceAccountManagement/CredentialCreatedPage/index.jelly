@@ -6,7 +6,7 @@
             <p>Copy and store this secret now. It cannot be viewed again.</p>
             <p class="jenkins-form-item">Username: <code>${it.username}</code></p>
             <p class="jenkins-form-item">Secret: <code id="service-account-secret">${it.secret}</code></p>
-            <p class="jenkins-form-item"><a href="account?id=${it.accountId}">Return to service account</a></p>
+            <p class="jenkins-form-item"><a href="./${it.accountId}/">Return to service account</a></p>
         </l:main-panel>
     </l:layout>
 </j:jelly>

@@ -85,6 +85,15 @@ public class ServiceAccountManagement extends ManagementLink {
     @GET
     public HttpResponse doAccount(@QueryParameter String id) throws IOException {
         Jenkins.get().checkPermission(ServiceAccountPermissions.VIEW);
+        return HttpResponses.forwardToView(accountPage(id), "index");
+    }
+
+    public AccountPage getDynamic(String id) throws IOException {
+        Jenkins.get().checkPermission(ServiceAccountPermissions.VIEW);
+        return accountPage(id);
+    }
+
+    private AccountPage accountPage(String id) throws IOException {
         ServiceAccountStore.AccountSummary account = store().listAccounts().stream()
                 .filter(candidate -> candidate.id().equals(id))
                 .findFirst()
@@ -92,7 +101,7 @@ public class ServiceAccountManagement extends ManagementLink {
         if (account == null) {
             throw HttpResponses.notFound();
         }
-        return HttpResponses.forwardToView(new AccountPage(account), "index");
+        return new AccountPage(account);
     }
 
     @GET
@@ -295,7 +304,7 @@ public class ServiceAccountManagement extends ManagementLink {
     }
 
     private static HttpResponse accountRedirect(String accountId) {
-        return HttpResponses.redirectTo("account?id=" + accountId);
+        return HttpResponses.redirectTo("./" + accountId + "/");
     }
 
     private static HttpResponse createAccountErrorRedirect(

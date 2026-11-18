@@ -88,10 +88,11 @@ class ServiceAccountAuthorizationTest {
                 ((HtmlInput) duplicateResponse.getFirstByXPath("//input[@name='displayName']")).getValueAttribute());
 
         var accountLink = afterCreate.getAnchors().stream()
-                .filter(anchor -> anchor.getHrefAttribute().contains("account?id=browser-created"))
+                .filter(anchor -> anchor.getHrefAttribute().endsWith("browser-created/"))
                 .findFirst()
                 .orElseThrow();
         HtmlPage accountPage = accountLink.click();
+        assertTrue(accountPage.getUrl().getPath().endsWith("/service-accounts/browser-created/"));
         assertTrue(accountPage.asNormalizedText().contains("Credentials"), accountPage.asNormalizedText());
         assertTrue(accountPage.asNormalizedText().contains("Create a credential"), accountPage.asNormalizedText());
         assertTrue(accountPage.asNormalizedText().contains("Created:"), accountPage.asNormalizedText());
@@ -99,9 +100,12 @@ class ServiceAccountAuthorizationTest {
         assertFalse(accountPageMarkup.contains("onclick="), accountPageMarkup);
         assertTrue(accountPageMarkup.contains("service-account-delete-form"), accountPageMarkup);
         assertTrue(accountPageMarkup.contains("AccountPage.js"), accountPageMarkup);
+        assertTrue(accountPageMarkup.contains("AccountPage.css"), accountPageMarkup);
 
         HtmlForm createCredentialForm = accountPage.getFirstByXPath("//form[contains(@action, 'createCredential')]");
         assertTrue(createCredentialForm.getAttribute("class").contains("jenkins-form-item"));
+        assertNotNull(createCredentialForm.getInputByName(
+                rule.jenkins.getCrumbIssuer().getCrumbRequestField()));
         assertTrue(accountPage
                         .getByXPath("//p[contains(@class, 'jenkins-form-item')]")
                         .size()
@@ -143,7 +147,7 @@ class ServiceAccountAuthorizationTest {
         String createdSecret = secretElement.asNormalizedText();
         assertFalse(storeLog.toString().contains(createdSecret));
         var returnLink = credentialCreatedPage.getAnchors().stream()
-                .filter(anchor -> anchor.getHrefAttribute().contains("account?id=browser-created"))
+                .filter(anchor -> anchor.getHrefAttribute().endsWith("browser-created/"))
                 .findFirst()
                 .orElseThrow();
         long credentialCreatedAt = store.listAccounts().stream()
@@ -158,6 +162,7 @@ class ServiceAccountAuthorizationTest {
                 .createdAt();
         HtmlPage updatedAccountPage = returnLink.click();
         assertTrue(updatedAccountPage.asNormalizedText().contains("browser-token"));
+        assertTrue(updatedAccountPage.asXml().contains("service-account-credential-action"));
         assertTrue(updatedAccountPage.asNormalizedText().contains("Never"));
         assertFalse(updatedAccountPage.asNormalizedText().contains(createdSecret));
         assertFalse(updatedAccountPage.asNormalizedText().contains(Long.toString(credentialCreatedAt)));

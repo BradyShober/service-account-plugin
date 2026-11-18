@@ -12,6 +12,7 @@
             <j:if test="${it.canCreateAccounts}">
                 <h2>Create a service account</h2>
                 <f:form method="post" action="createAccount" class="jenkins-form-item">
+                    <input type="hidden" name="${h.getCrumbRequestField()}" value="${h.getCrumb(request2)}"/>
                     <input type="hidden" name="fromUi" value="true"/>
                     <p class="jenkins-form-item"><label>Identifier <input class="jenkins-input" type="text" name="id" value="${it.creationId}" required="required" pattern="[a-z0-9][a-z0-9._-]{0,63}"/></label></p>
                     <p class="jenkins-form-item"><label>Display name <input class="jenkins-input" type="text" name="displayName" value="${it.creationDisplayName}" required="required"/></label></p>
@@ -37,7 +38,7 @@
                         <tbody>
                             <j:forEach var="account" items="${it.accounts}">
                                 <tr>
-                                    <td><a href="account?id=${account.id}">${account.displayName} (${account.id})</a></td>
+                                    <td><a href="${account.id}/">${account.displayName} (${account.id})</a></td>
                                     <td><code>${account.principalName}</code></td>
                                     <td>${account.enabled ? 'enabled' : 'disabled'}</td>
                                 </tr>
