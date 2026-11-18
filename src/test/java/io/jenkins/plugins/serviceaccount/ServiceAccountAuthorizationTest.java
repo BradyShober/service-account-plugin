@@ -95,6 +95,10 @@ class ServiceAccountAuthorizationTest {
         assertTrue(accountPage.asNormalizedText().contains("Credentials"), accountPage.asNormalizedText());
         assertTrue(accountPage.asNormalizedText().contains("Create a credential"), accountPage.asNormalizedText());
         assertTrue(accountPage.asNormalizedText().contains("Created:"), accountPage.asNormalizedText());
+        String accountPageMarkup = accountPage.asXml();
+        assertFalse(accountPageMarkup.contains("onclick="), accountPageMarkup);
+        assertTrue(accountPageMarkup.contains("service-account-delete-form"), accountPageMarkup);
+        assertTrue(accountPageMarkup.contains("AccountPage.js"), accountPageMarkup);
 
         HtmlForm createCredentialForm = accountPage.getFirstByXPath("//form[contains(@action, 'createCredential')]");
         assertTrue(createCredentialForm.getAttribute("class").contains("jenkins-form-item"));

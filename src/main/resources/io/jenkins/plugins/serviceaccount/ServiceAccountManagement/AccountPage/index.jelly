@@ -1,5 +1,6 @@
 <?jelly escape-by-default='true'?>
-<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:f="/lib/form">
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:l="/lib/layout" xmlns:f="/lib/form">
+    <st:adjunct includes="io.jenkins.plugins.serviceaccount.ServiceAccountManagement.AccountPage"/>
     <l:layout title="${it.account.displayName}">
         <l:main-panel>
             <p><a href="./">Back to service accounts</a></p>
@@ -28,9 +29,9 @@
             </j:if>
 
             <j:if test="${it.canDeleteAccounts}">
-                <f:form method="post" action="deleteAccount" class="jenkins-form-item">
+                <f:form method="post" action="deleteAccount" class="jenkins-form-item service-account-delete-form" data-confirm="Delete this account and invalidate all its credentials?">
                     <input type="hidden" name="accountId" value="${it.account.id}"/>
-                    <f:submit value="Delete account" onclick="return confirm('Delete this account and invalidate all its credentials?')"/>
+                    <f:submit value="Delete account"/>
                 </f:form>
             </j:if>
 

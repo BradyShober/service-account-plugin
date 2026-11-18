@@ -125,10 +125,6 @@ curl -fsS -u "$JENKINS_USER:$JENKINS_API_TOKEN" \
 
 Successful state-changing endpoints may redirect or return JSON as noted above; clients should handle redirects where applicable. Validation errors are returned as JSON with an `error` field. Mutations require POST and are protected by Jenkins CSRF handling.
 
-## Development
-
-The plugin is built against Jenkins 2.580.1 and Java 21 or newer.
-
 ```shell
 mvn test
 ```
