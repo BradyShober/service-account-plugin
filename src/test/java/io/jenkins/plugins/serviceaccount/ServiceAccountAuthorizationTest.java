@@ -14,6 +14,7 @@ import hudson.security.ACL;
 import hudson.security.ACLContext;
 import hudson.security.GlobalMatrixAuthorizationStrategy;
 import hudson.security.HudsonPrivateSecurityRealm;
+import hudson.security.PermissionGroup;
 import io.jenkins.plugins.casc.ConfigurationAsCode;
 import java.nio.file.Files;
 import java.util.logging.Handler;
@@ -32,6 +33,27 @@ import org.springframework.security.core.Authentication;
 
 @WithJenkins
 class ServiceAccountAuthorizationTest {
+    @Test
+    void serviceAccountPermissionsAreRegisteredAtStartup(JenkinsRule rule) {
+        PermissionGroup group = PermissionGroup.getAll().stream()
+                .filter(candidate -> candidate
+                        .getOwnerClassName()
+                        .equals("io.jenkins.plugins.serviceaccount.ServiceAccountPermissions"))
+                .findFirst()
+                .orElseThrow();
+
+        assertTrue(group.getPermissions().stream()
+                .anyMatch(permission -> permission.getId().endsWith("ViewServiceAccounts")));
+        assertTrue(group.getPermissions().stream()
+                .anyMatch(permission -> permission.getId().endsWith("CreateServiceAccounts")));
+        assertTrue(group.getPermissions().stream()
+                .anyMatch(permission -> permission.getId().endsWith("ManageServiceAccounts")));
+        assertTrue(group.getPermissions().stream()
+                .anyMatch(permission -> permission.getId().endsWith("DeleteServiceAccounts")));
+        assertTrue(group.getPermissions().stream()
+                .anyMatch(permission -> permission.getId().endsWith("ManageServiceAccountCredentials")));
+    }
+
     @Test
     void serviceAccountsPageIsLinkedFromManageJenkins(JenkinsRule rule) throws Exception {
         ServiceAccountManagement serviceAccountLink = ManagementLink.all().stream()
@@ -168,8 +190,8 @@ class ServiceAccountAuthorizationTest {
         assertFalse(updatedAccountPage.asNormalizedText().contains(Long.toString(credentialCreatedAt)));
         ServiceAccountManagement management =
                 Jenkins.get().getExtensionList(ServiceAccountManagement.class).get(0);
-        assertFalse(management.doApi().toString().contains(createdSecret));
-        assertFalse(management.doAudit().toString().contains(createdSecret));
+        assertFalse(management.getApi().doIndex().toString().contains(createdSecret));
+        assertFalse(management.getApi().doAudit().toString().contains(createdSecret));
         assertFalse(Files.readString(rule.jenkins.getRootDir().toPath().resolve("service-accounts.xml"))
                 .contains(createdSecret));
         HtmlForm revokeForm = updatedAccountPage.getFirstByXPath("//form[contains(@action, 'revokeCredential')]");
@@ -263,14 +285,14 @@ class ServiceAccountAuthorizationTest {
         try (ACLContext ignored = ACL.as2(monitoring)) {
             assertTrue(rule.jenkins.hasPermission(Jenkins.READ));
             assertFalse(project.hasPermission(Item.BUILD));
-            String accountList = management.doApi().toString();
+            String accountList = management.getApi().doIndex().toString();
             assertTrue(accountList.contains("monitoring"), accountList);
             assertFalse(accountList.contains(monitoringCredential.secret()), accountList);
         }
         try (ACLContext ignored = ACL.as2(deployment)) {
             assertFalse(rule.jenkins.hasPermission(Jenkins.READ));
             assertTrue(project.hasPermission(Item.BUILD));
-            assertThrows(AccessDeniedException.class, management::doApi);
+            assertThrows(AccessDeniedException.class, () -> management.getApi().doIndex());
         }
     }
 

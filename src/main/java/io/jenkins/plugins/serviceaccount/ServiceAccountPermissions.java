@@ -1,5 +1,7 @@
 package io.jenkins.plugins.serviceaccount;
 
+import hudson.init.InitMilestone;
+import hudson.init.Initializer;
 import hudson.security.Permission;
 import hudson.security.PermissionGroup;
 import hudson.security.PermissionScope;
@@ -39,6 +41,15 @@ public final class ServiceAccountPermissions {
             Messages._ServiceAccountPermissions_ManageServiceAccountCredentials(),
             Jenkins.ADMINISTER,
             PermissionScope.JENKINS);
+
+    @Initializer(after = InitMilestone.PLUGINS_STARTED)
+    public static void registerPermissions() {
+        VIEW.getId();
+        CREATE.getId();
+        MANAGE.getId();
+        DELETE.getId();
+        MANAGE_CREDENTIALS.getId();
+    }
 
     private ServiceAccountPermissions() {}
 }

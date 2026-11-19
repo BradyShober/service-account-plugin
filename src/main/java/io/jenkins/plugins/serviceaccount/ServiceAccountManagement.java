@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -108,36 +107,8 @@ public class ServiceAccountManagement extends ManagementLink {
         return new AccountPage(account);
     }
 
-    @GET
-    public JSONObject doApi() throws IOException {
-        Jenkins.get().checkPermission(ServiceAccountPermissions.VIEW);
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put(
-                "accounts",
-                store().listAccounts().stream()
-                        .map(ServiceAccountManagement::accountMap)
-                        .toList());
-        return JSONObject.fromObject(response);
-    }
-
-    @GET
-    public JSONObject doAudit() throws IOException {
-        Jenkins.get().checkPermission(ServiceAccountPermissions.VIEW);
-        List<Map<String, Object>> events = new ArrayList<>();
-        for (ServiceAccountStore.AuditEvent event : store().listAuditEvents()) {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("type", event.type());
-            item.put("accountId", event.accountId());
-            item.put("principalName", event.principalName());
-            item.put("credentialId", event.credentialId());
-            item.put("credentialLabel", event.credentialLabel());
-            item.put("actor", event.actor());
-            item.put("timestamp", event.timestamp());
-            events.add(item);
-        }
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("events", events);
-        return JSONObject.fromObject(response);
+    public ServiceAccountApi getApi() {
+        return new ServiceAccountApi();
     }
 
     @GET
@@ -154,27 +125,14 @@ public class ServiceAccountManagement extends ManagementLink {
             @QueryParameter String fromUi)
             throws IOException {
         Jenkins.get().checkPermission(ServiceAccountPermissions.CREATE);
+        if (!"true".equals(fromUi)) {
+            throw HttpResponses.notFound();
+        }
         try {
             store().createAccount(id, displayName, description, actor());
             return HttpResponses.redirectTo("./");
         } catch (IllegalArgumentException e) {
-            if ("true".equals(fromUi)) {
-                return createAccountErrorRedirect(id, displayName, description, e.getMessage());
-            }
-            return jsonError(400, e.getMessage());
-        }
-    }
-
-    @RequirePOST
-    public HttpResponse doUpdateAccount(
-            @QueryParameter String accountId, @QueryParameter String displayName, @QueryParameter String description)
-            throws IOException {
-        Jenkins.get().checkPermission(ServiceAccountPermissions.MANAGE);
-        try {
-            store().updateAccount(accountId, displayName, description, actor());
-            return jsonResponse(Map.of("updated", true), 200);
-        } catch (IllegalArgumentException e) {
-            return jsonError(400, e.getMessage());
+            return createAccountErrorRedirect(id, displayName, description, e.getMessage());
         }
     }
 
@@ -187,6 +145,9 @@ public class ServiceAccountManagement extends ManagementLink {
             @QueryParameter String fromUi)
             throws IOException {
         Jenkins.get().checkPermission(ServiceAccountPermissions.MANAGE_CREDENTIALS);
+        if (!"true".equals(fromUi)) {
+            throw HttpResponses.notFound();
+        }
         Integer days;
         try {
             days = lifetimeDays == null || lifetimeDays.isBlank() ? null : Integer.valueOf(lifetimeDays);
@@ -196,16 +157,8 @@ public class ServiceAccountManagement extends ManagementLink {
         try {
             ServiceAccountStore.CreatedCredential credential =
                     store().createCredential(accountId, label, description, days, actor());
-            if ("true".equals(fromUi)) {
-                return HttpResponses.forwardToView(
-                        new CredentialCreatedPage(accountId, credential.username(), credential.secret()), "index");
-            }
-            return jsonResponse(
-                    Map.of(
-                            "credentialId", credential.id(),
-                            "username", credential.username(),
-                            "secret", credential.secret()),
-                    201);
+            return HttpResponses.forwardToView(
+                    new CredentialCreatedPage(accountId, credential.username(), credential.secret()), "index");
         } catch (IllegalArgumentException e) {
             return jsonError(400, e.getMessage());
         }
@@ -262,7 +215,7 @@ public class ServiceAccountManagement extends ManagementLink {
         return Jenkins.getAuthentication2().getName();
     }
 
-    private static Map<String, Object> accountMap(ServiceAccountStore.AccountSummary account) {
+    static Map<String, Object> accountMap(ServiceAccountStore.AccountSummary account) {
         return accountMap(account, false);
     }
 
@@ -278,31 +231,37 @@ public class ServiceAccountManagement extends ManagementLink {
         if (forPage) {
             result.put("createdAtDisplay", formatTimestamp(account.createdAt()));
         }
-        List<Map<String, Object>> credentials = new ArrayList<>();
-        for (ServiceAccountStore.CredentialSummary credential : account.credentials()) {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("id", credential.id());
-            item.put("username", credential.username());
-            item.put("label", credential.label());
-            item.put("description", credential.description());
-            item.put("status", credential.status());
-            item.put("createdAt", credential.createdAt());
-            item.put("createdBy", credential.createdBy());
-            item.put("lastUsedAt", credential.lastUsedAt());
-            item.put("expiresAt", credential.expiresAt());
-            item.put("revokedAt", credential.revokedAt());
-            item.put("revokedBy", credential.revokedBy());
-            if (forPage) {
-                item.put("createdAtDisplay", formatTimestamp(credential.createdAt()));
-                item.put("expiresAtDisplay", formatTimestamp(credential.expiresAt()));
-                item.put(
-                        "lastUsedAtDisplay",
-                        credential.lastUsedAt() == 0 ? "Never" : formatTimestamp(credential.lastUsedAt()));
-            }
-            credentials.add(item);
-        }
-        result.put("credentials", credentials);
+        result.put("credentials", credentialMaps(account, forPage));
         return result;
+    }
+
+    static List<Map<String, Object>> credentialMaps(ServiceAccountStore.AccountSummary account, boolean forPage) {
+        return account.credentials().stream()
+                .map(credential -> credentialMap(credential, forPage))
+                .toList();
+    }
+
+    static Map<String, Object> credentialMap(ServiceAccountStore.CredentialSummary credential, boolean forPage) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("id", credential.id());
+        item.put("username", credential.username());
+        item.put("label", credential.label());
+        item.put("description", credential.description());
+        item.put("status", credential.status());
+        item.put("createdAt", credential.createdAt());
+        item.put("createdBy", credential.createdBy());
+        item.put("lastUsedAt", credential.lastUsedAt());
+        item.put("expiresAt", credential.expiresAt());
+        item.put("revokedAt", credential.revokedAt());
+        item.put("revokedBy", credential.revokedBy());
+        if (forPage) {
+            item.put("createdAtDisplay", formatTimestamp(credential.createdAt()));
+            item.put("expiresAtDisplay", formatTimestamp(credential.expiresAt()));
+            item.put(
+                    "lastUsedAtDisplay",
+                    credential.lastUsedAt() == 0 ? "Never" : formatTimestamp(credential.lastUsedAt()));
+        }
+        return item;
     }
 
     private static HttpResponse jsonResponse(Map<String, Object> values, int status) {
