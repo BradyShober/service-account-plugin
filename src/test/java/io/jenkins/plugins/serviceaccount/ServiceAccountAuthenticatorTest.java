@@ -154,6 +154,33 @@ class ServiceAccountAuthenticatorTest {
     }
 
     @Test
+    void deletingAccountRemovesAccountAndCredentialDataButKeepsAuditHistory(JenkinsRule rule) throws Exception {
+        ServiceAccountStore store =
+                Jenkins.get().getExtensionList(ServiceAccountStore.class).get(0);
+        store.createAccount("delete-me", "Delete me", null, "admin");
+        ServiceAccountStore.CreatedCredential credential =
+                store.createCredential("delete-me", "automation", null, null, "admin");
+
+        store.deleteAccount("delete-me", "admin");
+
+        ServiceAccountStore reloaded = new ServiceAccountStore();
+        assertTrue(reloaded.listAccounts().isEmpty());
+        assertNull(reloaded.authenticate("delete-me", credential.id(), credential.secret()));
+        assertTrue(reloaded.listAuditEvents().stream()
+                .anyMatch(event -> event.type().equals("ACCOUNT_DELETED") && event.accountId().equals("delete-me")));
+        String persisted = Files.readString(rule.jenkins.getRootDir().toPath().resolve("service-accounts.xml"));
+        assertFalse(persisted.contains("<verifier>"));
+        store.createAccount("delete-me", "Recreated", null, "admin");
+        assertTrue(store.listAccounts().stream()
+                .filter(account -> account.id().equals("delete-me"))
+                .findFirst()
+                .orElseThrow()
+                .credentials()
+                .isEmpty());
+        assertNull(store.authenticate("delete-me", credential.id(), credential.secret()));
+    }
+
+    @Test
     void revocationDisablementAndExpirationAreEnforced(JenkinsRule rule) throws Exception {
         ServiceAccountStore store =
                 Jenkins.get().getExtensionList(ServiceAccountStore.class).get(0);

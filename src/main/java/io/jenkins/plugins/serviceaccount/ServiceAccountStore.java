@@ -84,10 +84,6 @@ public class ServiceAccountStore {
             }
 
             AccountRecord existing = accounts.get(definition.getId());
-            if (existing != null && existing.deletedAt != null) {
-                throw new IllegalArgumentException(
-                        "A deleted service account cannot be configured again: " + definition.getId());
-            }
             if (existing == null) {
                 validatePrincipalAvailable(definition.getId(), principalName(definition.getId()));
             }
@@ -148,7 +144,7 @@ public class ServiceAccountStore {
             throws IOException {
         ensureLoaded();
         AccountRecord account = accounts.get(accountId);
-        if (account == null || account.deletedAt != null) {
+        if (account == null) {
             throw new IllegalArgumentException("Service account does not exist");
         }
         if (!account.enabled) {
@@ -251,31 +247,14 @@ public class ServiceAccountStore {
     synchronized void deleteAccount(String accountId, String actor) throws IOException {
         ensureLoaded();
         AccountRecord account = requireActiveAccount(accountId);
-        long deletedAt = System.currentTimeMillis();
-        boolean enabled = account.enabled;
-        account.deletedAt = deletedAt;
-        account.enabled = false;
-        Map<CredentialRecord, CredentialState> previous = new LinkedHashMap<>();
-        for (CredentialRecord credential : account.credentials.values()) {
-            previous.put(
-                    credential, new CredentialState(credential.verifier, credential.revokedAt, credential.revokedBy));
-            credential.verifier = null;
-            if (credential.revokedAt == null) {
-                credential.revokedAt = deletedAt;
-                credential.revokedBy = actor;
-            }
-        }
+        Map<String, AccountRecord> previousAccounts = accounts;
+        accounts = new LinkedHashMap<>(accounts);
+        accounts.remove(accountId);
         addEvent("ACCOUNT_DELETED", account, null, actor);
         try {
             save();
         } catch (IOException e) {
-            account.deletedAt = null;
-            account.enabled = enabled;
-            previous.forEach((credential, state) -> {
-                credential.verifier = state.verifier();
-                credential.revokedAt = state.revokedAt();
-                credential.revokedBy = state.revokedBy();
-            });
+            accounts = previousAccounts;
             auditEvents.remove(auditEvents.size() - 1);
             throw e;
         }
@@ -290,7 +269,7 @@ public class ServiceAccountStore {
             throws IOException {
         ensureLoaded();
         AccountRecord account = accounts.get(accountId);
-        if (account == null || account.deletedAt != null || !account.enabled || secret == null) {
+        if (account == null || !account.enabled || secret == null) {
             return null;
         }
 
@@ -306,7 +285,7 @@ public class ServiceAccountStore {
 
         long now = System.currentTimeMillis();
         for (AccountRecord account : accounts.values()) {
-            if (account.deletedAt != null || !account.enabled) {
+            if (!account.enabled) {
                 continue;
             }
             if (credentialUsername(account.id).equals(username)) {
@@ -356,7 +335,6 @@ public class ServiceAccountStore {
     synchronized List<AccountSummary> listAccounts() throws IOException {
         ensureLoaded();
         return accounts.values().stream()
-                .filter(account -> account.deletedAt == null)
                 .map(this::toSummary)
                 .sorted(Comparator.comparing(AccountSummary::id))
                 .toList();
@@ -389,7 +367,7 @@ public class ServiceAccountStore {
 
     private AccountRecord requireActiveAccount(String id) {
         AccountRecord account = accounts.get(id);
-        if (account == null || account.deletedAt != null) {
+        if (account == null) {
             throw new IllegalArgumentException("Service account does not exist");
         }
         return account;
@@ -575,7 +553,6 @@ public class ServiceAccountStore {
         private boolean enabled = true;
         private long createdAt;
         private String createdBy;
-        private Long deletedAt;
         private Map<String, CredentialRecord> credentials = new LinkedHashMap<>();
     }
 
@@ -593,8 +570,6 @@ public class ServiceAccountStore {
     }
 
     private record AccountMetadata(String displayName, String description) {}
-
-    private record CredentialState(String verifier, Long revokedAt, String revokedBy) {}
 
     private static class AuditEventRecord {
         private String type;

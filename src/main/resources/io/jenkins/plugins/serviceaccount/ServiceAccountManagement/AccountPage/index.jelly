@@ -31,7 +31,7 @@
             </j:if>
 
             <j:if test="${it.canDeleteAccounts}">
-                <f:form method="post" action="../deleteAccount" class="jenkins-form-item service-account-delete-form" data-confirm="Delete this account and invalidate all its credentials?">
+                <f:form method="post" action="../deleteAccount" class="jenkins-form-item service-account-delete-form">
                     <input type="hidden" name="${h.getCrumbRequestField()}" value="${h.getCrumb(request2)}"/>
                     <input type="hidden" name="accountId" value="${it.account.id}"/>
                     <f:submit value="Delete account"/>

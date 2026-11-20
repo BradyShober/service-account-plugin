@@ -52,7 +52,7 @@ $JENKINS_URL/manage/service-accounts
 | `POST /api/accounts/create` | Create service accounts | JSON body: `id`, `displayName`, optional `description`. Returns HTTP 201 JSON. |
 | `POST /api/accounts/{id}/update` | Manage service accounts | JSON body: `displayName`, optional `description`. |
 | `POST /api/accounts/{id}/enable` or `/disable` | Manage service accounts | Enables or disables the account. |
-| `POST /api/accounts/{id}/delete` | Delete service accounts | Deletes the account and invalidates its credentials. |
+| `POST /api/accounts/{id}/delete` | Delete service accounts | Permanently removes the account and stored credential data; its ID may be reused. Audit events remain until their configured retention period expires. |
 | `POST /api/accounts/{id}/credentials/create` | Manage service-account credentials | JSON body: `label`, optional `description` and `lifetimeDays`. Returns HTTP 201 JSON with the new `secret` once. |
 | `GET /api/accounts/{id}/credentials/{credentialId}` | View service accounts | JSON metadata for one credential; secrets are never included. |
 | `POST /api/accounts/{id}/credentials/{credentialId}/revoke` | Manage service-account credentials | Revokes only that credential. |
