@@ -1,0 +1,8 @@
+.jenkins-table thead .service-account-table-filter {
+  margin: 0;
+}
+
+.jenkins-table thead .service-account-table-filter .setting-main {
+  display: flex;
+  align-items: center;
+}

@@ -1,15 +1,16 @@
 <?jelly escape-by-default='true'?>
-<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:l="/lib/layout" xmlns:f="/lib/form">
+    <st:adjunct includes="io.jenkins.plugins.serviceaccount.ServiceAccountManagement.TableFilters"/>
     <l:layout title="Service Account Audit Log">
         <l:main-panel>
-            <p><a href="../">Back to service accounts</a></p>
+            <p><a href="./">Back to service accounts</a></p>
             <h1>Service account audit log</h1>
             <j:choose>
                 <j:when test="${empty(it.events)}">
                     <p>No audit events are available within the configured retention period.</p>
                 </j:when>
                 <j:otherwise>
-                    <table class="jenkins-table">
+                    <table class="jenkins-table" data-filterable="true">
                         <thead>
                             <tr>
                                 <th>Time</th>
@@ -19,6 +20,28 @@
                                 <th>Credential</th>
                                 <th>Credential ID</th>
                                 <th>Actor</th>
+                            </tr>
+                            <tr>
+                                <th><input class="jenkins-input" type="text" data-filter-column="0" aria-label="Filter by time" placeholder="Filter time"/></th>
+                                <th>
+                                    <f:entry class="service-account-table-filter">
+                                    <select class="jenkins-select__input" data-filter-column="1" aria-label="Filter by event">
+                                        <option value="">All events</option>
+                                        <option value="ACCOUNT_CREATED">Account created</option>
+                                        <option value="ACCOUNT_UPDATED">Account updated</option>
+                                        <option value="ACCOUNT_ENABLED">Account enabled</option>
+                                        <option value="ACCOUNT_DISABLED">Account disabled</option>
+                                        <option value="ACCOUNT_DELETED">Account deleted</option>
+                                        <option value="CREDENTIAL_CREATED">Credential created</option>
+                                        <option value="CREDENTIAL_REVOKED">Credential revoked</option>
+                                    </select>
+                                    </f:entry>
+                                </th>
+                                <th><input class="jenkins-input" type="text" data-filter-column="2" aria-label="Filter by account" placeholder="Filter account"/></th>
+                                <th><input class="jenkins-input" type="text" data-filter-column="3" aria-label="Filter by principal" placeholder="Filter principal"/></th>
+                                <th><input class="jenkins-input" type="text" data-filter-column="4" aria-label="Filter by credential" placeholder="Filter credential"/></th>
+                                <th><input class="jenkins-input" type="text" data-filter-column="5" aria-label="Filter by credential ID" placeholder="Filter credential ID"/></th>
+                                <th><input class="jenkins-input" type="text" data-filter-column="6" aria-label="Filter by actor" placeholder="Filter actor"/></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -33,6 +56,9 @@
                                     <td>${event.actor}</td>
                                 </tr>
                             </j:forEach>
+                            <tr data-filter-empty="true" hidden="hidden">
+                                <td colspan="7" role="status" aria-live="polite">No audit events match these filters.</td>
+                            </tr>
                         </tbody>
                     </table>
                 </j:otherwise>
