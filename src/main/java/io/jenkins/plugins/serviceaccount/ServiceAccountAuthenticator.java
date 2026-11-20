@@ -19,9 +19,7 @@ public class ServiceAccountAuthenticator extends BasicHeaderAuthenticator {
     public Authentication authenticate2(
             HttpServletRequest request, HttpServletResponse response, String username, String password)
             throws IOException, ServletException {
-        if (username == null
-                || (!username.startsWith(ServiceAccountStore.PRINCIPAL_PREFIX)
-                        && !username.startsWith(ServiceAccountStore.CREDENTIAL_USERNAME_PREFIX))) {
+        if (username == null || !username.startsWith(ServiceAccountStore.PRINCIPAL_PREFIX)) {
             return null;
         }
 

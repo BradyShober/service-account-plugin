@@ -47,8 +47,7 @@ public class ServiceAccountCrumbExclusion extends CrumbExclusion {
         }
         String username = usernameAndPassword.substring(0, separator);
         String secret = usernameAndPassword.substring(separator + 1);
-        if (!username.startsWith(ServiceAccountStore.PRINCIPAL_PREFIX)
-                && !username.startsWith(ServiceAccountStore.CREDENTIAL_USERNAME_PREFIX)) {
+        if (!username.startsWith(ServiceAccountStore.PRINCIPAL_PREFIX)) {
             return false;
         }
         try {

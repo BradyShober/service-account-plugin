@@ -207,10 +207,6 @@ class ServiceAccountAuthenticatorTest {
                 (jakarta.servlet.http.HttpServletResponse) null,
                 second.username(),
                 second.secret()));
-        assertNotNull(store.authenticate(ServiceAccountStore.CREDENTIAL_USERNAME_PREFIX + "rotation", first.secret()));
-        assertNotNull(store.authenticate(
-                ServiceAccountStore.CREDENTIAL_USERNAME_PREFIX + "rotation-" + first.id(), first.secret()));
-
         store.revokeCredential("rotation", first.id(), "admin");
         assertNull(authenticate(first));
         assertNotNull(authenticate(second));

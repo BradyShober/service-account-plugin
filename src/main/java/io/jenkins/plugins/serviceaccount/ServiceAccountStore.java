@@ -26,7 +26,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 @Extension
 public class ServiceAccountStore {
     static final String PRINCIPAL_PREFIX = "service-account-";
-    static final String CREDENTIAL_USERNAME_PREFIX = "service-account-token-";
     private static final String STORE_FILENAME = "service-accounts.xml";
     private static final long LAST_USED_SAVE_INTERVAL_MILLIS = 60_000L;
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -310,8 +309,7 @@ public class ServiceAccountStore {
             if (account.deletedAt != null || !account.enabled) {
                 continue;
             }
-            if (credentialUsername(account.id).equals(username)
-                    || legacyStableCredentialUsername(account.id).equals(username)) {
+            if (credentialUsername(account.id).equals(username)) {
                 for (CredentialRecord credential : account.credentials.values()) {
                     AuthenticatedAccount authenticated = authenticateCredential(account, credential, secret, now);
                     if (authenticated != null) {
@@ -319,17 +317,6 @@ public class ServiceAccountStore {
                     }
                 }
                 return null;
-            }
-        }
-
-        for (AccountRecord account : accounts.values()) {
-            if (account.deletedAt != null || !account.enabled) {
-                continue;
-            }
-            for (CredentialRecord credential : account.credentials.values()) {
-                if (legacyCredentialUsername(account.id, credential.id).equals(username)) {
-                    return authenticateCredential(account, credential, secret, now);
-                }
             }
         }
         return null;
@@ -364,14 +351,6 @@ public class ServiceAccountStore {
 
     static String credentialUsername(String accountId) {
         return principalName(accountId);
-    }
-
-    private static String legacyStableCredentialUsername(String accountId) {
-        return CREDENTIAL_USERNAME_PREFIX + accountId;
-    }
-
-    private static String legacyCredentialUsername(String accountId, String credentialId) {
-        return CREDENTIAL_USERNAME_PREFIX + accountId + "-" + credentialId;
     }
 
     synchronized List<AccountSummary> listAccounts() throws IOException {
